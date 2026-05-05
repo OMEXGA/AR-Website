@@ -48,7 +48,7 @@
       <div class="instruction" id="instruction">
         <span class="shake-icon">📳</span>
         <p>เขย่ามือถือเพื่อเสี่ยงเซียมซี</p>
-        <p class="hint">หรือแตะที่กระบอกเซียมซี</p>
+        <p class="hint">หรือแตะที่กระบอกเซียมซีหลายๆ ครั้ง</p>
       </div>
 
       <div class="desktop-tap-area" id="desktopTap">
@@ -212,7 +212,8 @@
 
     function decayShake() {
       if (shakeProgress > 0 && !isRevealed) {
-        shakeProgress = Math.max(0, shakeProgress - 0.5);
+        // Aggressive decay — must keep shaking/tapping continuously
+        shakeProgress = Math.max(0, shakeProgress - 1.5);
         updateShakeUI();
         if (shakeProgress <= 0) {
           isShaking = false;
@@ -228,28 +229,21 @@
     }
 
     // ===== Tap/Click Fallback =====
-    containerWrapper.addEventListener('click', simulateShakeAnim);
+    containerWrapper.addEventListener('click', handleTap);
     const btnTap = $('btnTap');
-    if (btnTap) btnTap.addEventListener('click', simulateShakeAnim);
+    if (btnTap) btnTap.addEventListener('click', handleTap);
 
-    let simulating = false;
-    function simulateShakeAnim() {
-      if (isRevealed || simulating) return;
-      simulating = true;
+    const TAP_AMOUNT = 8; // Need ~13+ rapid taps to fill
+    function handleTap() {
+      if (isRevealed) return;
+      addShake(TAP_AMOUNT);
+      // Brief shake animation per tap
       containerWrapper.classList.add('shaking');
-      shakeMeter.classList.add('visible');
-      let step = 0;
-      const totalSteps = 30;
-      const interval = setInterval(() => {
-        step++;
-        shakeProgress = Math.min(SHAKE_GOAL, (step / totalSteps) * SHAKE_GOAL);
-        updateShakeUI();
-        if (step >= totalSteps) {
-          clearInterval(interval);
-          simulating = false;
-          revealFortune();
+      setTimeout(() => {
+        if (!isRevealed && shakeProgress < SHAKE_GOAL) {
+          containerWrapper.classList.remove('shaking');
         }
-      }, 60);
+      }, 200);
     }
 
     // ===== Reveal Fortune =====
