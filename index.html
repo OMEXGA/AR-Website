@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>เซียมซี - Siam Si Fortune Sticks</title>
+  <meta name="description" content="เซียมซีออนไลน์ เขย่ามือถือเสี่ยงเซียมซี">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;700&family=Sarabun:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assestes/styles.css">
+</head>
+<body>
+
+  <!-- Floating Particles -->
+  <div class="particles" id="particles"></div>
+
+  <!-- Permission Screen (for iOS gyro) -->
+  <div class="permission-screen" id="permissionScreen">
+    <div class="icon">📿</div>
+    <h2>เซียมซีออนไลน์</h2>
+    <p>กรุณาอนุญาตการใช้เซ็นเซอร์เพื่อเขย่าเซียมซี</p>
+    <button class="btn btn-primary" id="btnPermission">เริ่มเสี่ยงเซียมซี</button>
+  </div>
+
+  <!-- Main App -->
+  <div class="app-container">
+    <header class="header">
+      <h1>เซียมซี</h1>
+      <p class="subtitle">✦ เสี่ยงทาย ✦</p>
+    </header>
+
+    <div class="siamsi-section">
+      <div class="container-wrapper" id="containerWrapper">
+        <img src="assestes/siamsi_container.png" alt="กระบอกเซียมซี" class="container-img" id="containerImg">
+        <div class="fortune-stick" id="fortuneStick">
+          <div class="stick-tip"></div>
+          <div class="stick-body">
+            <span class="stick-number" id="stickNumber"></span>
+          </div>
+        </div>
+        <div class="sparkle-burst" id="sparkleBurst"></div>
+      </div>
+
+      <div class="shake-meter" id="shakeMeter">
+        <div class="shake-meter-fill" id="shakeMeterFill"></div>
+      </div>
+
+      <div class="instruction" id="instruction">
+        <span class="shake-icon">📳</span>
+        <p>เขย่ามือถือเพื่อเสี่ยงเซียมซี</p>
+        <p class="hint">หรือแตะที่กระบอกเซียมซี</p>
+      </div>
+
+      <div class="desktop-tap-area" id="desktopTap">
+        <button class="btn-tap" id="btnTap">🎋 เขย่าเซียมซี</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Fortune Popup -->
+  <div class="popup-overlay" id="popupOverlay">
+    <div class="popup-card">
+      <div class="popup-ornament">🪷</div>
+      <div class="popup-stick-number" id="popupStickNum"></div>
+      <div class="popup-fortune-title" id="popupTitle"></div>
+      <div class="popup-divider"></div>
+      <div class="popup-fortune-text" id="popupText"></div>
+      <div class="popup-fortune-advice" id="popupAdvice"></div>
+      <div class="luck-rating" id="luckRating">
+        <span class="label">ดวง:</span>
+        <div class="luck-stars" id="luckStars"></div>
+      </div>
+      <div class="popup-actions">
+        <button class="btn btn-secondary" id="btnShare">แชร์</button>
+        <button class="btn btn-primary" id="btnAgain">เสี่ยงอีกครั้ง</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ===== Fortune Data (28 fortunes) =====
+    const FORTUNES = [
+      { num: 1, title: "มหาโชค", level: 5, text: "ดวงของท่านรุ่งเรืองยิ่งนัก การงานจะก้าวหน้า เงินทองไหลมาเทมา", advice: "ให้ทำบุญใส่บาตร สิ่งดีๆ จะเข้ามาอย่างต่อเนื่อง" },
+      { num: 2, title: "โชคดี", level: 4, text: "สิ่งที่หวังจะสมปรารถนา มีคนช่วยเหลือ ให้ทำดีต่อไป", advice: "อย่าลืมช่วยเหลือผู้อื่นเช่นกัน ดวงจะดีต่อเนื่อง" },
+      { num: 3, title: "ดีมาก", level: 4, text: "ดวงความรักสดใส มีเนื้อคู่เข้ามา หรือความรักเดิมจะแน่นแฟ้นขึ้น", advice: "เปิดใจให้กว้าง สิ่งดีๆ กำลังจะเข้ามา" },
+      { num: 4, title: "ปานกลาง", level: 3, text: "ดวงกำลังเปลี่ยนแปลง ให้อดทนรอคอย สิ่งดีกำลังจะมาถึง", advice: "ให้สวดมนต์ภาวนา จิตใจจะสงบ ดวงจะดีขึ้น" },
+      { num: 5, title: "มีอุปสรรค", level: 2, text: "ระวังคนไม่จริงใจ อย่าไว้ใจง่ายเกินไป ให้ระมัดระวังตัว", advice: "ทำบุญไถ่ชีวิตสัตว์ จะช่วยเสริมดวงให้ดีขึ้น" },
+      { num: 6, title: "โชคลาภ", level: 5, text: "มีโชคลาภเข้ามา อาจได้ลาภลอย ให้ทำบุญเสริมดวง", advice: "ให้เก็บรักษาทรัพย์สินให้ดี อย่าใจร้อนใช้จ่าย" },
+      { num: 7, title: "สมหวัง", level: 4, text: "สิ่งที่ตั้งใจไว้จะสำเร็จ แต่ต้องอดทนและพยายาม", advice: "ความพยายามอยู่ที่ไหน ความสำเร็จอยู่ที่นั่น" },
+      { num: 8, title: "ระวังตัว", level: 2, text: "ดวงมีเกณฑ์พบอุปสรรค ให้ระวังเรื่องสุขภาพและการเงิน", advice: "ให้ไหว้พระ ทำบุญ ถือศีล จะช่วยลดทอนเคราะห์" },
+      { num: 9, title: "ก้าวหน้า", level: 4, text: "การงานจะก้าวหน้า มีโอกาสดีเข้ามา ให้คว้าไว้อย่าปล่อย", advice: "ให้ตั้งใจทำงานอย่างจริงจัง ผลตอบแทนจะคุ้มค่า" },
+      { num: 10, title: "พบสุข", level: 5, text: "ชีวิตครอบครัวจะมีความสุข เรื่องร้ายจะกลายเป็นดี", advice: "ให้ดูแลคนรอบข้าง ความสุขจะทวีคูณ" },
+      { num: 11, title: "รอคอย", level: 3, text: "ยังไม่ถึงเวลา ให้อดทนรอคอย ทุกอย่างจะดีขึ้นเอง", advice: "อย่าใจร้อน ให้เตรียมตัวให้พร้อมรับสิ่งดีๆ" },
+      { num: 12, title: "เปลี่ยนแปลง", level: 3, text: "จะมีการเปลี่ยนแปลงครั้งใหญ่ในชีวิต ให้เตรียมใจรับ", advice: "ทุกการเปลี่ยนแปลงคือโอกาส ให้มองในแง่ดี" },
+      { num: 13, title: "ระวังภัย", level: 1, text: "ให้ระวังเรื่องเอกสารและสัญญา อย่าเซ็นอะไรโดยไม่อ่านให้ดี", advice: "สวดมนต์ทุกวัน ทำจิตใจให้สงบ เคราะห์จะผ่านพ้น" },
+      { num: 14, title: "เจริญรุ่ง", level: 5, text: "ดวงการเงินดีมาก มีโอกาสรวย ให้ขยันและประหยัด", advice: "ให้แบ่งปันความสุขให้ผู้อื่น ดวงจะดียิ่งขึ้น" },
+      { num: 15, title: "คู่ครอง", level: 4, text: "จะพบเนื้อคู่ที่ดี หรือความรักจะเบ่งบาน ให้เปิดใจ", advice: "รักษาความดีงาม คนดีจะเข้ามาในชีวิต" },
+      { num: 16, title: "ทุกข์ชั่วคราว", level: 2, text: "มีทุกข์ แต่เป็นเพียงชั่วคราว ให้อดทน ฟ้าหลังฝนย่อมสดใส", advice: "ให้ปล่อยวาง อย่ายึดติด ทุกข์จะผ่านไป" },
+      { num: 17, title: "การเดินทาง", level: 3, text: "จะมีการเดินทางไกล อาจได้พบสิ่งดีๆ ระหว่างทาง", advice: "ให้เปิดใจรับประสบการณ์ใหม่ๆ จะได้เรียนรู้สิ่งดีๆ" },
+      { num: 18, title: "มั่งคั่ง", level: 5, text: "ดวงการเงินรุ่งเรือง มีรายได้เพิ่ม ธุรกิจเจริญ", advice: "อย่าลืมทำบุญ แบ่งปัน จะยิ่งเจริญ" },
+      { num: 19, title: "สุขภาพดี", level: 4, text: "สุขภาพแข็งแรง ให้ดูแลตัวเองต่อไป มีพลังในการทำสิ่งต่างๆ", advice: "ออกกำลังกายสม่ำเสมอ พักผ่อนให้เพียงพอ" },
+      { num: 20, title: "ปัญหา", level: 2, text: "จะพบปัญหาเล็กน้อย แต่สามารถแก้ไขได้ ให้ใจเย็น", advice: "ให้ปรึกษาผู้ใหญ่ที่ไว้ใจได้ จะได้คำตอบที่ดี" },
+      { num: 21, title: "แสงสว่าง", level: 4, text: "ความมืดจะหายไป สิ่งที่รอคอยกำลังจะมาถึง", advice: "ให้มีความหวัง อย่ายอมแพ้ สิ่งดีใกล้เข้ามาแล้ว" },
+      { num: 22, title: "ขัดแย้ง", level: 2, text: "ระวังการทะเลาะเบาะแว้ง ให้ใจเย็น อย่าใช้อารมณ์", advice: "นับ 1-10 ก่อนพูด ให้สติอยู่กับตัวเสมอ" },
+      { num: 23, title: "พบมิตร", level: 4, text: "จะได้พบเพื่อนแท้ มีคนมาช่วยเหลือเมื่อยามลำบาก", advice: "เป็นเพื่อนที่ดีกับทุกคน สิ่งดีจะย้อนกลับมา" },
+      { num: 24, title: "ชัยชนะ", level: 5, text: "จะประสบความสำเร็จในสิ่งที่ท้าทาย ชนะคู่แข่ง", advice: "ให้ถ่อมตัว ชัยชนะที่แท้คือการชนะใจตัวเอง" },
+      { num: 25, title: "สงบสุข", level: 3, text: "ชีวิตจะสงบสุข ไม่มีเรื่องวุ่นวาย ให้เพลิดเพลินกับปัจจุบัน", advice: "ให้ซื่อสัตย์กับตัวเอง ความสงบคือความสุขที่แท้จริง" },
+      { num: 26, title: "ลาภลอย", level: 5, text: "มีโชคลาภโดยไม่คาดคิด อาจได้ของขวัญหรือสิ่งพิเศษ", advice: "ให้ทำบุญตอบแทน สิ่งดีจะวนกลับมา" },
+      { num: 27, title: "ต้องอดทน", level: 2, text: "ยังต้องอดทนอีกสักระยะ ให้เก็บเงิน ระวังรายจ่าย", advice: "ความอดทนคือกุญแจสู่ความสำเร็จ" },
+      { num: 28, title: "ดวงดี", level: 4, text: "ทุกอย่างจะราบรื่น สิ่งที่ทำจะสำเร็จ ให้มั่นใจในตัวเอง", advice: "จงเชื่อมั่นในตัวเอง ท่านมีศักยภาพมากกว่าที่คิด" }
+    ];
+
+    // ===== State =====
+    let shakeProgress = 0;
+    let isShaking = false;
+    let isRevealed = false;
+    let hasGyro = false;
+    let lastAccel = { x: 0, y: 0, z: 0 };
+    const SHAKE_THRESHOLD = 15;
+    const SHAKE_GOAL = 100;
+
+    // ===== DOM =====
+    const $ = id => document.getElementById(id);
+    const containerWrapper = $('containerWrapper');
+    const fortuneStick = $('fortuneStick');
+    const stickNumber = $('stickNumber');
+    const shakeMeter = $('shakeMeter');
+    const shakeMeterFill = $('shakeMeterFill');
+    const popupOverlay = $('popupOverlay');
+    const permissionScreen = $('permissionScreen');
+    const sparkleBurst = $('sparkleBurst');
+    const instruction = $('instruction');
+
+    // ===== Particles =====
+    (function initParticles() {
+      const container = $('particles');
+      for (let i = 0; i < 20; i++) {
+        const p = document.createElement('div');
+        p.className = 'particle';
+        p.style.left = Math.random() * 100 + '%';
+        p.style.animationDelay = Math.random() * 8 + 's';
+        p.style.animationDuration = (6 + Math.random() * 4) + 's';
+        p.style.width = (2 + Math.random() * 4) + 'px';
+        p.style.height = p.style.width;
+        container.appendChild(p);
+      }
+    })();
+
+    // ===== Permission / Gyro Setup =====
+    $('btnPermission').addEventListener('click', async () => {
+      if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+        try {
+          const perm = await DeviceMotionEvent.requestPermission();
+          if (perm === 'granted') { startMotion(); }
+          else { fallbackToTap(); }
+        } catch { fallbackToTap(); }
+      } else if ('DeviceMotionEvent' in window) {
+        startMotion();
+      } else {
+        fallbackToTap();
+      }
+      permissionScreen.classList.add('hidden');
+    });
+
+    function startMotion() {
+      hasGyro = true;
+      window.addEventListener('devicemotion', handleMotion, true);
+    }
+
+    function fallbackToTap() {
+      hasGyro = false;
+      document.body.classList.add('no-gyro');
+    }
+
+    // ===== Check if desktop (no gyro likely) =====
+    if (!('DeviceMotionEvent' in window) || /Macintosh|Windows/.test(navigator.userAgent)) {
+      permissionScreen.classList.add('hidden');
+      fallbackToTap();
+    }
+
+    // ===== Motion Handler =====
+    function handleMotion(e) {
+      if (isRevealed) return;
+      const a = e.accelerationIncludingGravity;
+      if (!a) return;
+      const dx = Math.abs(a.x - lastAccel.x);
+      const dy = Math.abs(a.y - lastAccel.y);
+      const dz = Math.abs(a.z - lastAccel.z);
+      const delta = dx + dy + dz;
+      lastAccel = { x: a.x, y: a.y, z: a.z };
+
+      if (delta > SHAKE_THRESHOLD) {
+        addShake(delta / 3);
+      } else {
+        decayShake();
+      }
+    }
+
+    function addShake(amount) {
+      if (isRevealed) return;
+      shakeProgress = Math.min(SHAKE_GOAL, shakeProgress + amount);
+      updateShakeUI();
+      if (!isShaking) {
+        isShaking = true;
+        containerWrapper.classList.add('shaking');
+        shakeMeter.classList.add('visible');
+      }
+      if (shakeProgress >= SHAKE_GOAL) {
+        revealFortune();
+      }
+    }
+
+    function decayShake() {
+      if (shakeProgress > 0 && !isRevealed) {
+        shakeProgress = Math.max(0, shakeProgress - 0.5);
+        updateShakeUI();
+        if (shakeProgress <= 0) {
+          isShaking = false;
+          containerWrapper.classList.remove('shaking');
+          shakeMeter.classList.remove('visible');
+        }
+      }
+    }
+
+    function updateShakeUI() {
+      const pct = (shakeProgress / SHAKE_GOAL) * 100;
+      shakeMeterFill.style.width = pct + '%';
+    }
+
+    // ===== Tap/Click Fallback =====
+    containerWrapper.addEventListener('click', simulateShakeAnim);
+    const btnTap = $('btnTap');
+    if (btnTap) btnTap.addEventListener('click', simulateShakeAnim);
+
+    let simulating = false;
+    function simulateShakeAnim() {
+      if (isRevealed || simulating) return;
+      simulating = true;
+      containerWrapper.classList.add('shaking');
+      shakeMeter.classList.add('visible');
+      let step = 0;
+      const totalSteps = 30;
+      const interval = setInterval(() => {
+        step++;
+        shakeProgress = Math.min(SHAKE_GOAL, (step / totalSteps) * SHAKE_GOAL);
+        updateShakeUI();
+        if (step >= totalSteps) {
+          clearInterval(interval);
+          simulating = false;
+          revealFortune();
+        }
+      }, 60);
+    }
+
+    // ===== Reveal Fortune =====
+    function revealFortune() {
+      if (isRevealed) return;
+      isRevealed = true;
+      containerWrapper.classList.remove('shaking');
+      shakeMeter.classList.remove('visible');
+      instruction.style.opacity = '0';
+
+      const fortune = FORTUNES[Math.floor(Math.random() * FORTUNES.length)];
+      stickNumber.textContent = fortune.num;
+
+      // Animate stick rising
+      fortuneStick.classList.add('rising');
+      fortuneStick.style.opacity = '1';
+
+      // Sparkles
+      createSparkles();
+
+      // Show popup after stick animation
+      setTimeout(() => showPopup(fortune), 2000);
+    }
+
+    function createSparkles() {
+      sparkleBurst.innerHTML = '';
+      for (let i = 0; i < 12; i++) {
+        const s = document.createElement('div');
+        s.className = 'sparkle';
+        const angle = (i / 12) * Math.PI * 2;
+        const dist = 40 + Math.random() * 60;
+        s.style.setProperty('--tx', Math.cos(angle) * dist + 'px');
+        s.style.setProperty('--ty', Math.sin(angle) * dist + 'px');
+        s.style.animationDelay = Math.random() * 0.3 + 's';
+        sparkleBurst.appendChild(s);
+      }
+    }
+
+    // ===== Popup =====
+    function showPopup(fortune) {
+      $('popupStickNum').textContent = `เซียมซี ใบที่ ${fortune.num}`;
+      $('popupTitle').textContent = fortune.title;
+      $('popupText').textContent = fortune.text;
+      $('popupAdvice').textContent = `💡 ${fortune.advice}`;
+
+      // Stars
+      const starsEl = $('luckStars');
+      starsEl.innerHTML = '';
+      for (let i = 0; i < 5; i++) {
+        const star = document.createElement('span');
+        star.className = 'star' + (i >= fortune.level ? ' empty' : '');
+        star.textContent = '⭐';
+        star.style.animationDelay = (i * 0.15) + 's';
+        starsEl.appendChild(star);
+      }
+
+      popupOverlay.classList.add('active');
+    }
+
+    function hidePopup() {
+      popupOverlay.classList.remove('active');
+    }
+
+    // ===== Reset =====
+    function resetGame() {
+      hidePopup();
+      setTimeout(() => {
+        isRevealed = false;
+        isShaking = false;
+        shakeProgress = 0;
+        tapCount = 0;
+        fortuneStick.classList.remove('rising');
+        fortuneStick.style.opacity = '0';
+        shakeMeterFill.style.width = '0%';
+        instruction.style.opacity = '1';
+        sparkleBurst.innerHTML = '';
+      }, 400);
+    }
+
+    $('btnAgain').addEventListener('click', resetGame);
+    $('btnShare').addEventListener('click', () => {
+      const title = $('popupTitle').textContent;
+      const text = $('popupText').textContent;
+      const msg = `🪷 เซียมซี: ${title}\n${text}`;
+      if (navigator.share) {
+        navigator.share({ title: 'เซียมซี', text: msg }).catch(() => {});
+      } else {
+        navigator.clipboard.writeText(msg).then(() => alert('คัดลอกแล้ว!')).catch(() => {});
+      }
+    });
+
+    // Decay loop
+    setInterval(() => { if (!isRevealed) decayShake(); }, 100);
+  </script>
+</body>
+</html>
