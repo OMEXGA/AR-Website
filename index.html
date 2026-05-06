@@ -31,26 +31,12 @@
 
     <div class="siamsi-section">
       <div class="container-wrapper" id="containerWrapper">
-        <!-- Stick BEHIND container (z-index: 1) — looks like it's inside -->
-        <div class="stick-layer" id="stickLayer">
-          <model-viewer
-            id="stickModel"
-            src="assestes/stick.glb"
-            alt="ไม้เซียมซี"
-            camera-orbit="0deg 75deg 2m"
-            camera-target="0m 0m 0m"
-            field-of-view="30deg"
-            interaction-prompt="none"
-            disable-zoom disable-pan disable-tap
-            style="width:100%;height:100%;background:transparent;"
-          ></model-viewer>
-        </div>
-
-        <!-- Container IN FRONT (z-index: 2) — static, no rotation -->
+        <!-- Container — static, rotated 90° -->
         <model-viewer
           id="containerModel"
           src="assestes/Container.glb"
           alt="กระบอกเซียมซี"
+          orientation="0 90deg 0"
           camera-orbit="0deg 75deg 2.5m"
           camera-target="0m 0m 0m"
           field-of-view="30deg"
@@ -58,6 +44,23 @@
           disable-zoom disable-pan disable-tap
           class="container-model"
         ></model-viewer>
+
+        <!-- Stick — clipped to only show part above container rim -->
+        <div class="stick-clip" id="stickClip">
+          <div class="stick-layer" id="stickLayer">
+            <model-viewer
+              id="stickModel"
+              src="assestes/stick.glb"
+              alt="ไม้เซียมซี"
+              camera-orbit="0deg 75deg 2m"
+              camera-target="0m 0m 0m"
+              field-of-view="30deg"
+              interaction-prompt="none"
+              disable-zoom disable-pan disable-tap
+              style="width:100%;height:300px;background:transparent;"
+            ></model-viewer>
+          </div>
+        </div>
 
         <div class="stick-number-overlay" id="stickNumberOverlay">
           <span id="stickNumber"></span>
@@ -282,10 +285,12 @@
         physics.angleZ *= 0.97;
       }
 
-      // Apply transform to stick layer
-      const riseOffset = physics.riseY * -180; // pixels to rise
+      // Apply wobble rotation to stick layer
       stickLayer.style.transform =
-        `translateY(${riseOffset}px) rotateX(${physics.angleX}deg) rotateZ(${physics.angleZ}deg)`;
+        `rotateX(${physics.angleX * 0.3}deg) rotateZ(${physics.angleZ}deg)`;
+      // Rising: slide stick up within clip area (140 = fully hidden, 0 = peeking, negative = risen out)
+      const riseOffset = 140 - (physics.riseY * 280);
+      stickLayer.style.top = riseOffset + 'px';
 
       requestAnimationFrame(physicsLoop);
     }

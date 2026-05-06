@@ -152,13 +152,14 @@ body::after {
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
+  transform-style: preserve-3d;
+  isolation: isolate;
 }
 
-/* Container model sits IN FRONT */
+/* Container model — fills wrapper */
 .container-model {
   position: absolute;
   inset: 0;
-  z-index: 2;
   width: 100%;
   height: 100%;
   background: transparent;
@@ -166,11 +167,23 @@ body::after {
   --poster-color: transparent;
 }
 
-/* Stick layer sits BEHIND container — appears inside */
-.stick-layer {
+/* Clip area — sits above container, clips stick to only show tip above rim */
+.stick-clip {
   position: absolute;
-  inset: 0;
-  z-index: 1;
+  top: -60px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80px;
+  height: 200px;
+  overflow: hidden;
+  z-index: 10;
+  pointer-events: none;
+}
+
+/* Stick layer — starts pushed down so only tip peeks out, slides up on reveal */
+.stick-layer {
+  position: relative;
+  top: 140px; /* mostly hidden inside container */
   width: 100%;
   height: 100%;
   transform-origin: center bottom;
