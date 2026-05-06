@@ -118,8 +118,6 @@
     let lastAccel = { x: 0, y: 0, z: 0 };
     const SHAKE_THRESHOLD = 30;  // Require genuinely hard shakes
     const SHAKE_GOAL = 100;
-    let lastInputTime = 0;
-    const DECAY_PAUSE_MS = 2000; // Pause decay for 2s after any input (generous for tapping)
 
     // ===== DOM =====
     const $ = id => document.getElementById(id);
@@ -203,9 +201,9 @@
 
     function addShake(amount) {
       if (isRevealed) return;
-      lastInputTime = Date.now(); // Pause decay after input
       shakeProgress = Math.min(SHAKE_GOAL, shakeProgress + amount);
       updateShakeUI();
+      // Show meter and shaking animation
       if (!isShaking) {
         isShaking = true;
         containerWrapper.classList.add('shaking');
@@ -216,20 +214,7 @@
       }
     }
 
-    function decayShake() {
-      if (shakeProgress > 0 && !isRevealed) {
-        // Don't decay if we recently had input (gives user breathing room)
-        if (Date.now() - lastInputTime < DECAY_PAUSE_MS) return;
-        // Gentle decay — 0.5 per tick (5/sec), so progress lingers
-        shakeProgress = Math.max(0, shakeProgress - 0.5);
-        updateShakeUI();
-        if (shakeProgress <= 0) {
-          isShaking = false;
-          containerWrapper.classList.remove('shaking');
-          shakeMeter.classList.remove('visible');
-        }
-      }
-    }
+    // No decay — progress only goes UP (like real Siam Si)
 
     function updateShakeUI() {
       const pct = (shakeProgress / SHAKE_GOAL) * 100;
@@ -341,7 +326,8 @@
         isRevealed = false;
         isShaking = false;
         shakeProgress = 0;
-        tapCount = 0;
+        containerWrapper.classList.remove('shaking');
+        shakeMeter.classList.remove('visible');
         fortuneStick.classList.remove('rising');
         fortuneStick.style.opacity = '0';
         shakeMeterFill.style.width = '0%';
@@ -362,8 +348,7 @@
       }
     });
 
-    // Decay loop
-    setInterval(() => { if (!isRevealed) decayShake(); }, 100);
+
   </script>
 </body>
 </html>
