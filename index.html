@@ -161,7 +161,8 @@
     // Camera
     const camera = new THREE.PerspectiveCamera(45, rect.width / rect.height, 0.1, 100);
     // Move camera back a bit more dynamically to ensure it fits regardless of screen height
-    camera.position.set(0, 0.5, 3.8); 
+    camera.position.set(0, 0.18, 3.8);
+    camera.lookAt(0, 0, 0);
     
     // Resize Handler
     window.addEventListener('resize', () => {
@@ -198,10 +199,9 @@
       containerModel.scale.setScalar(scale);
       
       // Center it using the bounding box center to compensate for off-center geometry
-      // Align left edge with 'เ', fine-tuned right by 3 pixels
-      containerModel.position.x = (-center.x * scale) - 0.14;
+      containerModel.position.x = -center.x * scale;
       containerModel.position.z = -center.z * scale;
-      containerModel.position.y = -center.y * scale - 0.2; // Centered vertically, moved down a bit
+      containerModel.position.y = -center.y * scale - 0.16; // Lower the model slightly so it sits in the visible middle
       
       scene.add(containerModel);
     });
@@ -233,7 +233,7 @@
         
         // Position bundle tightly in the center
         const angleBase = ((index - 3) * 6) * (Math.PI / 180); // Bundle fan spread
-        const posX = ((index - 3) * 0.02) - 0.14; // Shifted slightly right to match container
+        const posX = (index - 3) * 0.02;
         const posZ = (Math.random() - 0.5) * 0.05;
         
         stickPivot.position.set(posX, -0.6, posZ); // Placed at bottom inside container
