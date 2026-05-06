@@ -274,13 +274,6 @@
     function doTap() {
       if (isRevealed) return;
       addShake(TAP_AMOUNT);
-      // Brief shake animation per tap
-      containerWrapper.classList.add('shaking');
-      setTimeout(() => {
-        if (!isRevealed && shakeProgress < SHAKE_GOAL) {
-          containerWrapper.classList.remove('shaking');
-        }
-      }, 200);
     }
 
     // ===== Reveal Fortune =====
