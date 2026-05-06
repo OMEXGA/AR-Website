@@ -116,8 +116,10 @@
     let isRevealed = false;
     let hasGyro = false;
     let lastAccel = { x: 0, y: 0, z: 0 };
-    const SHAKE_THRESHOLD = 15;
+    const SHAKE_THRESHOLD = 30;  // Require genuinely hard shakes
     const SHAKE_GOAL = 100;
+    let lastInputTime = 0;
+    const DECAY_PAUSE_MS = 600; // Pause decay for 600ms after any input
 
     // ===== DOM =====
     const $ = id => document.getElementById(id);
@@ -190,14 +192,18 @@
       lastAccel = { x: a.x, y: a.y, z: a.z };
 
       if (delta > SHAKE_THRESHOLD) {
-        addShake(delta / 3);
-      } else {
-        decayShake();
+        // Scale progress based on how much over the threshold
+        // Harder shakes give more progress
+        const intensity = (delta - SHAKE_THRESHOLD) / 10;
+        const amount = Math.min(intensity * 3, 12); // Cap at 12 per shake event
+        addShake(amount);
       }
+      // Decay is handled by the setInterval, not here
     }
 
     function addShake(amount) {
       if (isRevealed) return;
+      lastInputTime = Date.now(); // Pause decay after input
       shakeProgress = Math.min(SHAKE_GOAL, shakeProgress + amount);
       updateShakeUI();
       if (!isShaking) {
@@ -212,8 +218,10 @@
 
     function decayShake() {
       if (shakeProgress > 0 && !isRevealed) {
-        // Aggressive decay — must keep shaking/tapping continuously
-        shakeProgress = Math.max(0, shakeProgress - 1.5);
+        // Don't decay if we recently had input (gives user breathing room)
+        if (Date.now() - lastInputTime < DECAY_PAUSE_MS) return;
+        // Gentle decay — 0.5 per tick (5/sec), so progress lingers
+        shakeProgress = Math.max(0, shakeProgress - 0.5);
         updateShakeUI();
         if (shakeProgress <= 0) {
           isShaking = false;
@@ -233,7 +241,7 @@
     const btnTap = $('btnTap');
     if (btnTap) btnTap.addEventListener('click', handleTap);
 
-    const TAP_AMOUNT = 8; // Need ~13+ rapid taps to fill
+    const TAP_AMOUNT = 15; // Need ~7 taps to fill (with gentle decay)
     function handleTap() {
       if (isRevealed) return;
       addShake(TAP_AMOUNT);
