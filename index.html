@@ -8,7 +8,14 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;700&family=Sarabun:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="assestes/styles.css">
-  <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
 </head>
 <body>
 
@@ -31,34 +38,7 @@
 
     <div class="siamsi-section">
       <div class="container-wrapper" id="containerWrapper">
-        <!-- Container — static, centered -->
-        <model-viewer
-          id="containerModel"
-          src="assestes/Container.glb"
-          alt="กระบอกเซียมซี"
-          camera-orbit="90deg 75deg auto"
-          field-of-view="30deg"
-          interaction-prompt="none"
-          disable-zoom disable-pan disable-tap
-          class="container-model"
-        ></model-viewer>
-
-        <!-- Stick — clipped, only tip peeks above container -->
-        <div class="stick-clip" id="stickClip">
-          <div class="stick-layer" id="stickLayer">
-            <model-viewer
-              id="stickModel"
-              src="assestes/stick.glb"
-              alt="ไม้เซียมซี"
-              camera-orbit="0deg 75deg auto"
-              field-of-view="30deg"
-              interaction-prompt="none"
-              disable-zoom disable-pan disable-tap
-              style="width:100%;height:100%;background:transparent;"
-            ></model-viewer>
-          </div>
-        </div>
-
+        <canvas id="siamsiCanvas"></canvas>
         <div class="stick-number-overlay" id="stickNumberOverlay">
           <span id="stickNumber"></span>
         </div>
@@ -101,7 +81,10 @@
     </div>
   </div>
 
-  <script>
+  <script type="module">
+    import * as THREE from 'three';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
     // ===== Fortune Data =====
     const FORTUNES = [
       { num: 1, title: "มหาโชค", level: 5, text: "ดวงของท่านรุ่งเรืองยิ่งนัก การงานจะก้าวหน้า เงินทองไหลมาเทมา", advice: "ให้ทำบุญใส่บาตร สิ่งดีๆ จะเข้ามาอย่างต่อเนื่อง" },
@@ -156,8 +139,6 @@
     // ===== DOM =====
     const $ = id => document.getElementById(id);
     const containerWrapper = $('containerWrapper');
-    const stickLayer = $('stickLayer');
-    const stickModel = $('stickModel');
     const stickNumber = $('stickNumber');
     const stickNumberOverlay = $('stickNumberOverlay');
     const shakeMeter = $('shakeMeter');
@@ -166,6 +147,101 @@
     const permissionScreen = $('permissionScreen');
     const sparkleBurst = $('sparkleBurst');
     const instruction = $('instruction');
+
+    // ===== Three.js Setup =====
+    const canvas = $('siamsiCanvas');
+    const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+    // Increased canvas size so objects don't clip off the edges when shaking
+    renderer.setSize(400, 500);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    
+    const scene = new THREE.Scene();
+    
+    // Camera
+    const camera = new THREE.PerspectiveCamera(45, 400 / 500, 0.1, 100);
+    camera.position.set(0, 0.5, 3.6); // Pulled camera back so it fits the new larger canvas
+    
+    // Lighting
+    const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
+    scene.add(ambientLight);
+    const dirLight = new THREE.DirectionalLight(0xffffff, 2);
+    dirLight.position.set(5, 5, 5);
+    scene.add(dirLight);
+
+    const sticks = []; // Store loaded stick meshes
+    let chosenStickIndex = -1; // Stick to rise
+
+    const loader = new GLTFLoader();
+
+    // Load Container
+    loader.load('assestes/Container.glb', (gltf) => {
+      const containerModel = gltf.scene;
+      containerModel.rotation.y = -Math.PI / 2; // Face front (negative 90 degrees)
+      
+      // Auto-center container
+      const box = new THREE.Box3().setFromObject(containerModel);
+      const center = box.getCenter(new THREE.Vector3());
+      const size = box.getSize(new THREE.Vector3());
+      
+      // Normalize scale so container is always roughly 2 units tall
+      const scale = 2.0 / size.y;
+      containerModel.scale.setScalar(scale);
+      
+      // Center it using the bounding box center to compensate for off-center geometry
+      // Align left edge with 'เ', fine-tuned right by 3 pixels
+      containerModel.position.x = (-center.x * scale) - 0.14;
+      containerModel.position.z = -center.z * scale;
+      containerModel.position.y = -center.y * scale - 0.2; // Centered vertically, moved down a bit
+      
+      scene.add(containerModel);
+    });
+
+    // Load 7 Sticks
+    const stickFiles = ['stick1.glb', 'stick2.glb', 'stick3.glb', 'stick4.glb', 'stick5.glb', 'stick6.glb', 'stick7.glb'];
+    
+    stickFiles.forEach((file, index) => {
+      loader.load('assestes/' + file, (gltf) => {
+        const stickMesh = gltf.scene;
+        
+        // Auto-center stick mesh
+        const box = new THREE.Box3().setFromObject(stickMesh);
+        const center = box.getCenter(new THREE.Vector3());
+        const size = box.getSize(new THREE.Vector3());
+        
+        // Scale sticks to match container proportions
+        const stickScale = 1.8 / size.y; // Make sticks roughly 1.8 units long
+        stickMesh.scale.setScalar(stickScale);
+        
+        // Center perfectly on X and Z, and push UP so the pivot of the group is at the BOTTOM of the stick
+        stickMesh.position.x = -center.x * stickScale;
+        stickMesh.position.z = -center.z * stickScale;
+        stickMesh.position.y = -center.y * stickScale + (size.y * stickScale) / 2; 
+
+        // Create a pivot group for physics rotation
+        const stickPivot = new THREE.Group();
+        stickPivot.add(stickMesh);
+        
+        // Position bundle tightly in the center
+        const angleBase = ((index - 3) * 6) * (Math.PI / 180); // Bundle fan spread
+        const posX = ((index - 3) * 0.02) - 0.14; // Shifted slightly right to match container
+        const posZ = (Math.random() - 0.5) * 0.05;
+        
+        stickPivot.position.set(posX, -0.6, posZ); // Placed at bottom inside container
+        stickPivot.rotation.z = angleBase;
+        
+        // Save initial state for physics reset
+        stickPivot.userData = {
+          baseX: posX,
+          baseY: -0.6,
+          baseZ: posZ,
+          baseRotZ: angleBase
+        };
+
+        scene.add(stickPivot);
+        sticks.push(stickPivot);
+      });
+    });
+    // Removed duplicate const declarations
 
     // ===== Particles =====
     (function initParticles() {
@@ -282,13 +358,25 @@
         physics.angleZ *= 0.97;
       }
 
-      // Apply wobble rotation to stick layer
-      stickLayer.style.transform =
-        `rotateX(${physics.angleX * 0.3}deg) rotateZ(${physics.angleZ}deg)`;
-      // Rising: slide stick up within clip area (200 = hidden, negative = risen out)
-      const riseOffset = 200 - (physics.riseY * 300);
-      stickLayer.style.top = riseOffset + 'px';
+      // Apply wobble to all sticks
+      sticks.forEach((stick, i) => {
+        // Add some random variation per stick based on index
+        const varX = Math.sin(Date.now() * 0.005 + i) * (Math.abs(physics.velX) * 0.1);
+        const varZ = Math.cos(Date.now() * 0.005 + i) * (Math.abs(physics.velZ) * 0.1);
+        
+        stick.rotation.x = (physics.angleX * 0.3 + varX) * (Math.PI / 180);
+        stick.rotation.z = stick.userData.baseRotZ + (physics.angleZ + varZ) * (Math.PI / 180);
+        
+        // If this stick is chosen to rise
+        if (physics.rising && i === chosenStickIndex) {
+          const riseAmount = physics.riseY * 1.5; // adjust height as needed
+          stick.position.y = stick.userData.baseY + riseAmount;
+          stick.position.x = stick.userData.baseX + (physics.riseY * 0.1); // Move slightly to front/side
+          stick.position.z = stick.userData.baseZ + (physics.riseY * 0.2);
+        }
+      });
 
+      renderer.render(scene, camera);
       requestAnimationFrame(physicsLoop);
     }
     requestAnimationFrame(physicsLoop);
@@ -338,6 +426,11 @@
 
       const fortune = FORTUNES[Math.floor(Math.random() * FORTUNES.length)];
       stickNumber.textContent = fortune.num;
+
+      // Pick a random stick to rise
+      if (sticks.length > 0) {
+        chosenStickIndex = Math.floor(Math.random() * sticks.length);
+      }
 
       // Start stick rising via physics
       physics.rising = true;
@@ -409,6 +502,14 @@
         physics.velZ = 0;
         physics.riseY = 0;
         physics.rising = false;
+        chosenStickIndex = -1;
+        
+        // Snap sticks back
+        sticks.forEach(stick => {
+          stick.position.x = stick.userData.baseX;
+          stick.position.y = stick.userData.baseY;
+          stick.position.z = stick.userData.baseZ;
+        });
       }, 400);
     }
 
