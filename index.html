@@ -8,15 +8,13 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;700&family=Sarabun:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="assestes/styles.css">
-  <!-- model-viewer for 3D GLB models -->
   <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
 </head>
 <body>
 
-  <!-- Floating Particles -->
   <div class="particles" id="particles"></div>
 
-  <!-- Permission Screen (for iOS gyro) -->
+  <!-- Permission Screen -->
   <div class="permission-screen" id="permissionScreen">
     <div class="icon">📿</div>
     <h2>เซียมซีออนไลน์</h2>
@@ -33,35 +31,32 @@
 
     <div class="siamsi-section">
       <div class="container-wrapper" id="containerWrapper">
-        <!-- 3D Container Model -->
+        <!-- Stick BEHIND container (z-index: 1) — looks like it's inside -->
+        <div class="stick-layer" id="stickLayer">
+          <model-viewer
+            id="stickModel"
+            src="assestes/stick.glb"
+            alt="ไม้เซียมซี"
+            camera-orbit="0deg 75deg 2m"
+            camera-target="0m 0m 0m"
+            field-of-view="30deg"
+            interaction-prompt="none"
+            disable-zoom disable-pan disable-tap
+            style="width:100%;height:100%;background:transparent;"
+          ></model-viewer>
+        </div>
+
+        <!-- Container IN FRONT (z-index: 2) — static, no rotation -->
         <model-viewer
           id="containerModel"
           src="assestes/Container.glb"
           alt="กระบอกเซียมซี"
-          auto-rotate
-          rotation-per-second="15deg"
           camera-orbit="0deg 75deg 2.5m"
           camera-target="0m 0m 0m"
           field-of-view="30deg"
           interaction-prompt="none"
-          disable-zoom
-          disable-pan
-          style="width: 100%; height: 100%; --poster-color: transparent;"
-        ></model-viewer>
-
-        <!-- 3D Stick Model (hidden, rises on reveal) -->
-        <model-viewer
-          id="stickModel"
-          src="assestes/stick.glb"
-          alt="ไม้เซียมซี"
-          camera-orbit="0deg 75deg 2m"
-          camera-target="0m 0m 0m"
-          field-of-view="30deg"
-          interaction-prompt="none"
-          disable-zoom
-          disable-pan
-          disable-tap
-          style="width: 100%; height: 100%; position: absolute; top: 0; left: 0; opacity: 0; --poster-color: transparent; pointer-events: none; transition: opacity 0.5s ease;"
+          disable-zoom disable-pan disable-tap
+          class="container-model"
         ></model-viewer>
 
         <div class="stick-number-overlay" id="stickNumberOverlay">
@@ -107,7 +102,7 @@
   </div>
 
   <script>
-    // ===== Fortune Data (28 fortunes) =====
+    // ===== Fortune Data =====
     const FORTUNES = [
       { num: 1, title: "มหาโชค", level: 5, text: "ดวงของท่านรุ่งเรืองยิ่งนัก การงานจะก้าวหน้า เงินทองไหลมาเทมา", advice: "ให้ทำบุญใส่บาตร สิ่งดีๆ จะเข้ามาอย่างต่อเนื่อง" },
       { num: 2, title: "โชคดี", level: 4, text: "สิ่งที่หวังจะสมปรารถนา มีคนช่วยเหลือ ให้ทำดีต่อไป", advice: "อย่าลืมช่วยเหลือผู้อื่นเช่นกัน ดวงจะดีต่อเนื่อง" },
@@ -145,13 +140,23 @@
     let isRevealed = false;
     let hasGyro = false;
     let lastAccel = { x: 0, y: 0, z: 0 };
-    const SHAKE_THRESHOLD = 30;  // Require genuinely hard shakes
+    const SHAKE_THRESHOLD = 30;
     const SHAKE_GOAL = 100;
+
+    // ===== Stick Physics =====
+    const physics = {
+      angleX: 0, angleZ: 0,   // current tilt angles (degrees)
+      velX: 0, velZ: 0,       // angular velocity
+      spring: 0.15,           // spring constant (pulls back to center)
+      damping: 0.88,          // friction (0-1, lower = more damping)
+      riseY: 0,               // how far stick has risen (0 = inside, 1 = fully out)
+      rising: false
+    };
 
     // ===== DOM =====
     const $ = id => document.getElementById(id);
     const containerWrapper = $('containerWrapper');
-    const containerModel = $('containerModel');
+    const stickLayer = $('stickLayer');
     const stickModel = $('stickModel');
     const stickNumber = $('stickNumber');
     const stickNumberOverlay = $('stickNumberOverlay');
@@ -203,7 +208,6 @@
       document.body.classList.add('no-gyro');
     }
 
-    // ===== Check if desktop (no gyro likely) =====
     if (!('DeviceMotionEvent' in window) || /Macintosh|Windows/.test(navigator.userAgent)) {
       permissionScreen.classList.add('hidden');
       fallbackToTap();
@@ -214,30 +218,32 @@
       if (isRevealed) return;
       const a = e.accelerationIncludingGravity;
       if (!a) return;
-      const dx = Math.abs(a.x - lastAccel.x);
-      const dy = Math.abs(a.y - lastAccel.y);
-      const dz = Math.abs(a.z - lastAccel.z);
-      const delta = dx + dy + dz;
+      const dx = a.x - lastAccel.x;
+      const dy = a.y - lastAccel.y;
+      const dz = a.z - lastAccel.z;
+      const delta = Math.abs(dx) + Math.abs(dy) + Math.abs(dz);
       lastAccel = { x: a.x, y: a.y, z: a.z };
 
+      // Apply force to stick physics based on device motion
+      if (delta > 5) {
+        physics.velX += dx * 0.8;
+        physics.velZ += dz * 0.8;
+      }
+
+      // Only count as progress if shake is hard enough
       if (delta > SHAKE_THRESHOLD) {
-        // Scale progress based on how much over the threshold
-        // Harder shakes give more progress
         const intensity = (delta - SHAKE_THRESHOLD) / 10;
-        const amount = Math.min(intensity * 3, 12); // Cap at 12 per shake event
+        const amount = Math.min(intensity * 3, 12);
         addShake(amount);
       }
-      // Decay is handled by the setInterval, not here
     }
 
     function addShake(amount) {
       if (isRevealed) return;
       shakeProgress = Math.min(SHAKE_GOAL, shakeProgress + amount);
       updateShakeUI();
-      // Show meter and shaking animation
       if (!isShaking) {
         isShaking = true;
-        containerWrapper.classList.add('shaking');
         shakeMeter.classList.add('visible');
       }
       if (shakeProgress >= SHAKE_GOAL) {
@@ -245,31 +251,61 @@
       }
     }
 
-    // No decay — progress only goes UP (like real Siam Si)
-
     function updateShakeUI() {
       const pct = (shakeProgress / SHAKE_GOAL) * 100;
       shakeMeterFill.style.width = pct + '%';
     }
 
-    // ===== Tap/Click Fallback =====
-    const TAP_AMOUNT = 20; // Need ~5 taps to fill
+    // ===== Physics Loop (60fps) =====
+    function physicsLoop() {
+      if (!physics.rising) {
+        // Spring: pull back to center
+        physics.velX -= physics.angleX * physics.spring;
+        physics.velZ -= physics.angleZ * physics.spring;
+        // Damping
+        physics.velX *= physics.damping;
+        physics.velZ *= physics.damping;
+        // Integrate
+        physics.angleX += physics.velX;
+        physics.angleZ += physics.velZ;
+        // Clamp angles
+        physics.angleX = Math.max(-25, Math.min(25, physics.angleX));
+        physics.angleZ = Math.max(-25, Math.min(25, physics.angleZ));
+      } else {
+        // Rising animation - lerp Y upward, dampen wobble
+        physics.riseY = Math.min(1, physics.riseY + 0.012);
+        physics.velX *= 0.95;
+        physics.velZ *= 0.95;
+        physics.angleX += physics.velX;
+        physics.angleZ += physics.velZ;
+        physics.angleX *= 0.97;
+        physics.angleZ *= 0.97;
+      }
+
+      // Apply transform to stick layer
+      const riseOffset = physics.riseY * -180; // pixels to rise
+      stickLayer.style.transform =
+        `translateY(${riseOffset}px) rotateX(${physics.angleX}deg) rotateZ(${physics.angleZ}deg)`;
+
+      requestAnimationFrame(physicsLoop);
+    }
+    requestAnimationFrame(physicsLoop);
+
+    // ===== Tap/Click =====
+    const TAP_AMOUNT = 20;
     let tappedByTouch = false;
 
-    // Make the entire siamsi section tappable (not just the small container)
     const siamiSection = document.querySelector('.siamsi-section');
     const tapTargets = [containerWrapper, siamiSection];
     const btnTap = $('btnTap');
     if (btnTap) tapTargets.push(btnTap);
 
     tapTargets.forEach(el => {
-      // Prevent default mobile behaviors
       el.addEventListener('contextmenu', e => e.preventDefault());
       el.style.webkitUserSelect = 'none';
       el.style.userSelect = 'none';
       el.style.webkitTouchCallout = 'none';
 
-      // Touch (instant on mobile)
       el.addEventListener('touchend', (e) => {
         e.preventDefault();
         tappedByTouch = true;
@@ -277,7 +313,6 @@
         setTimeout(() => { tappedByTouch = false; }, 400);
       }, { passive: false });
 
-      // Click (desktop fallback)
       el.addEventListener('click', () => {
         if (tappedByTouch) return;
         doTap();
@@ -286,6 +321,9 @@
 
     function doTap() {
       if (isRevealed) return;
+      // Add random jolt to stick physics
+      physics.velX += (Math.random() - 0.5) * 30;
+      physics.velZ += (Math.random() - 0.5) * 30;
       addShake(TAP_AMOUNT);
     }
 
@@ -293,28 +331,23 @@
     function revealFortune() {
       if (isRevealed) return;
       isRevealed = true;
-      containerWrapper.classList.remove('shaking');
       shakeMeter.classList.remove('visible');
       instruction.style.opacity = '0';
 
       const fortune = FORTUNES[Math.floor(Math.random() * FORTUNES.length)];
       stickNumber.textContent = fortune.num;
 
-      // Animate 3D stick rising
-      stickModel.style.opacity = '1';
-      stickModel.style.transform = 'translateY(-150px)';
-      stickModel.style.transition = 'opacity 0.5s ease, transform 1.8s cubic-bezier(0.34, 1.56, 0.64, 1)';
+      // Start stick rising via physics
+      physics.rising = true;
+      physics.velX = (Math.random() - 0.5) * 10;
+      physics.velZ = 5 + Math.random() * 5;
 
-      // Show stick number overlay
       setTimeout(() => {
         stickNumberOverlay.classList.add('visible');
-      }, 800);
+      }, 1000);
 
-      // Sparkles
       createSparkles();
-
-      // Show popup after stick animation
-      setTimeout(() => showPopup(fortune), 2500);
+      setTimeout(() => showPopup(fortune), 2800);
     }
 
     function createSparkles() {
@@ -338,7 +371,6 @@
       $('popupText').textContent = fortune.text;
       $('popupAdvice').textContent = `💡 ${fortune.advice}`;
 
-      // Stars
       const starsEl = $('luckStars');
       starsEl.innerHTML = '';
       for (let i = 0; i < 5; i++) {
@@ -363,16 +395,18 @@
         isRevealed = false;
         isShaking = false;
         shakeProgress = 0;
-        containerWrapper.classList.remove('shaking');
         shakeMeter.classList.remove('visible');
-        // Reset 3D stick
-        stickModel.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
-        stickModel.style.opacity = '0';
-        stickModel.style.transform = 'translateY(0)';
-        stickNumberOverlay.classList.remove('visible');
         shakeMeterFill.style.width = '0%';
         instruction.style.opacity = '1';
         sparkleBurst.innerHTML = '';
+        stickNumberOverlay.classList.remove('visible');
+        // Reset physics
+        physics.angleX = 0;
+        physics.angleZ = 0;
+        physics.velX = 0;
+        physics.velZ = 0;
+        physics.riseY = 0;
+        physics.rising = false;
       }, 400);
     }
 
@@ -387,8 +421,6 @@
         navigator.clipboard.writeText(msg).then(() => alert('คัดลอกแล้ว!')).catch(() => {});
       }
     });
-
-
   </script>
 </body>
 </html>
