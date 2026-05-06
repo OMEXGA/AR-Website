@@ -119,7 +119,7 @@
     const SHAKE_THRESHOLD = 30;  // Require genuinely hard shakes
     const SHAKE_GOAL = 100;
     let lastInputTime = 0;
-    const DECAY_PAUSE_MS = 600; // Pause decay for 600ms after any input
+    const DECAY_PAUSE_MS = 2000; // Pause decay for 2s after any input (generous for tapping)
 
     // ===== DOM =====
     const $ = id => document.getElementById(id);
@@ -237,39 +237,36 @@
     }
 
     // ===== Tap/Click Fallback =====
-    // Use touchstart for mobile (instant, no 300ms delay) + click for desktop
-    containerWrapper.addEventListener('touchstart', handleTapTouch, { passive: false });
-    containerWrapper.addEventListener('click', handleTapClick);
+    const TAP_AMOUNT = 20; // Need ~5 taps to fill
+    let tappedByTouch = false;
+
+    // Make the entire siamsi section tappable (not just the small container)
+    const siamiSection = document.querySelector('.siamsi-section');
+    const tapTargets = [containerWrapper, siamiSection];
     const btnTap = $('btnTap');
-    if (btnTap) {
-      btnTap.addEventListener('touchstart', handleTapTouch, { passive: false });
-      btnTap.addEventListener('click', handleTapClick);
-    }
+    if (btnTap) tapTargets.push(btnTap);
 
-    // Prevent image drag / context menu on mobile (causes image to "disappear")
-    containerWrapper.addEventListener('contextmenu', e => e.preventDefault());
-    const containerImg = $('containerImg');
-    containerImg.addEventListener('dragstart', e => e.preventDefault());
-    containerImg.style.webkitUserSelect = 'none';
-    containerImg.style.userSelect = 'none';
-    containerImg.style.webkitTouchCallout = 'none';
+    tapTargets.forEach(el => {
+      // Prevent default mobile behaviors
+      el.addEventListener('contextmenu', e => e.preventDefault());
+      el.style.webkitUserSelect = 'none';
+      el.style.userSelect = 'none';
+      el.style.webkitTouchCallout = 'none';
 
-    let tappedByTouch = false; // Prevent double-fire (touch + click)
-    const TAP_AMOUNT = 15; // Need ~7 taps to fill (with gentle decay)
+      // Touch (instant on mobile)
+      el.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        tappedByTouch = true;
+        doTap();
+        setTimeout(() => { tappedByTouch = false; }, 400);
+      }, { passive: false });
 
-    function handleTapTouch(e) {
-      e.preventDefault(); // Prevent default touch behavior (image drag, ghost image, etc.)
-      tappedByTouch = true;
-      doTap();
-      // Reset flag after click event window
-      setTimeout(() => { tappedByTouch = false; }, 400);
-    }
-
-    function handleTapClick(e) {
-      // Skip if this click was triggered by a touch (already handled)
-      if (tappedByTouch) return;
-      doTap();
-    }
+      // Click (desktop fallback)
+      el.addEventListener('click', () => {
+        if (tappedByTouch) return;
+        doTap();
+      });
+    });
 
     function doTap() {
       if (isRevealed) return;
