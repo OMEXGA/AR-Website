@@ -150,16 +150,26 @@
 
     // ===== Three.js Setup =====
     const canvas = $('siamsiCanvas');
+    const rect = containerWrapper.getBoundingClientRect();
+    
     const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
-    // Increased canvas size so objects don't clip off the edges when shaking
-    renderer.setSize(400, 500);
-    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setSize(rect.width, rect.height);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Cap pixel ratio for performance
     
     const scene = new THREE.Scene();
     
     // Camera
-    const camera = new THREE.PerspectiveCamera(45, 400 / 500, 0.1, 100);
-    camera.position.set(0, 0.5, 3.6); // Pulled camera back so it fits the new larger canvas
+    const camera = new THREE.PerspectiveCamera(45, rect.width / rect.height, 0.1, 100);
+    // Move camera back a bit more dynamically to ensure it fits regardless of screen height
+    camera.position.set(0, 0.5, 3.8); 
+    
+    // Resize Handler
+    window.addEventListener('resize', () => {
+      const newRect = containerWrapper.getBoundingClientRect();
+      renderer.setSize(newRect.width, newRect.height);
+      camera.aspect = newRect.width / newRect.height;
+      camera.updateProjectionMatrix();
+    });
     
     // Lighting
     const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);

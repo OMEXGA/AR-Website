@@ -143,8 +143,11 @@ body::after {
 /* ===== 3D Model Container ===== */
 .container-wrapper {
   position: relative;
-  width: 400px;
-  height: 500px;
+  width: 100%;
+  max-width: 400px;
+  height: 50vh;
+  max-height: 450px;
+  min-height: 300px;
   display: flex;
   align-items: center;
   justify-content: center;
