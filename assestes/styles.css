@@ -167,25 +167,24 @@ body::after {
   --poster-color: transparent;
 }
 
-/* Clip area — sits above container, clips stick to only show tip above rim */
+/* Clip area — covers top of container, clips stick */
 .stick-clip {
   position: absolute;
-  top: -60px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 80px;
-  height: 200px;
+  top: -80px;
+  left: 0;
+  width: 100%;
+  height: 250px;
   overflow: hidden;
   z-index: 10;
   pointer-events: none;
 }
 
-/* Stick layer — starts pushed down so only tip peeks out, slides up on reveal */
+/* Stick layer — starts pushed down (hidden inside container), slides up on reveal */
 .stick-layer {
   position: relative;
-  top: 140px; /* mostly hidden inside container */
+  top: 200px; /* fully hidden inside */
   width: 100%;
-  height: 100%;
+  height: 300px;
   transform-origin: center bottom;
   will-change: transform;
 }

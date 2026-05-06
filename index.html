@@ -31,32 +31,30 @@
 
     <div class="siamsi-section">
       <div class="container-wrapper" id="containerWrapper">
-        <!-- Container — static -->
+        <!-- Container — static, centered -->
         <model-viewer
           id="containerModel"
           src="assestes/Container.glb"
           alt="กระบอกเซียมซี"
-          camera-orbit="90deg 75deg 2.5m"
-          camera-target="0m 0m 0m"
+          camera-orbit="90deg 75deg auto"
           field-of-view="30deg"
           interaction-prompt="none"
           disable-zoom disable-pan disable-tap
           class="container-model"
         ></model-viewer>
 
-        <!-- Stick — clipped to only show part above container rim -->
+        <!-- Stick — clipped, only tip peeks above container -->
         <div class="stick-clip" id="stickClip">
           <div class="stick-layer" id="stickLayer">
             <model-viewer
               id="stickModel"
               src="assestes/stick.glb"
               alt="ไม้เซียมซี"
-              camera-orbit="0deg 75deg 2m"
-              camera-target="0m 0m 0m"
+              camera-orbit="0deg 75deg auto"
               field-of-view="30deg"
               interaction-prompt="none"
               disable-zoom disable-pan disable-tap
-              style="width:100%;height:300px;background:transparent;"
+              style="width:100%;height:100%;background:transparent;"
             ></model-viewer>
           </div>
         </div>
@@ -287,8 +285,8 @@
       // Apply wobble rotation to stick layer
       stickLayer.style.transform =
         `rotateX(${physics.angleX * 0.3}deg) rotateZ(${physics.angleZ}deg)`;
-      // Rising: slide stick up within clip area (140 = fully hidden, 0 = peeking, negative = risen out)
-      const riseOffset = 140 - (physics.riseY * 280);
+      // Rising: slide stick up within clip area (200 = hidden, negative = risen out)
+      const riseOffset = 200 - (physics.riseY * 300);
       stickLayer.style.top = riseOffset + 'px';
 
       requestAnimationFrame(physicsLoop);
