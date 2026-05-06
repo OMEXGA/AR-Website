@@ -151,33 +151,45 @@
     // ===== Three.js Setup =====
     const canvas = $('siamsiCanvas');
     const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Cap pixel ratio for performance
     
     const scene = new THREE.Scene();
     
     // Camera
     const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
-    // Move camera back a bit more dynamically to ensure it fits regardless of screen height
     camera.position.set(0, 0.18, 3.8);
     camera.lookAt(0, 0, 0);
     
     // Resize Handler
+    // Pass `false` as 3rd arg so Three.js does NOT set canvas.style.width/height
+    // — that fights with our CSS `inset: 0` which sizes the canvas via CSS.
+    // We size the draw buffer manually using offsetWidth/offsetHeight.
     const resizeThree = () => {
-      const newRect = containerWrapper.getBoundingClientRect();
-      if (newRect.width === 0 || newRect.height === 0) return;
-      renderer.setSize(newRect.width, newRect.height);
-      camera.aspect = newRect.width / newRect.height;
+      const w = containerWrapper.offsetWidth;
+      const h = containerWrapper.offsetHeight;
+      if (w === 0 || h === 0) return;
+      const dpr = Math.min(window.devicePixelRatio, 2);
+      renderer.setPixelRatio(dpr);
+      renderer.setSize(w, h, false); // false = don't touch canvas CSS size
+      camera.aspect = w / h;
       camera.updateProjectionMatrix();
     };
     
     window.addEventListener('resize', resizeThree);
-    window.addEventListener('load', resizeThree);
-    resizeThree();
-    
+
+    // ResizeObserver fires whenever the wrapper element actually changes size on screen
     if ('ResizeObserver' in window) {
-      const resizeObserver = new ResizeObserver(resizeThree);
-      resizeObserver.observe(containerWrapper);
+      new ResizeObserver(resizeThree).observe(containerWrapper);
     }
+
+    // Run after full page load + delays for font/flex layout to settle
+    window.addEventListener('load', () => {
+      resizeThree();
+      setTimeout(resizeThree, 200);
+      setTimeout(resizeThree, 600);
+    });
+
+    // Run on next two animation frames — layout is fully flushed by then
+    requestAnimationFrame(() => { resizeThree(); requestAnimationFrame(resizeThree); });
     
     // Lighting
     const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
