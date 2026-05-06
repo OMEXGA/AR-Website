@@ -151,6 +151,7 @@ body::after {
   animation: fadeScaleIn 1.2s ease-out 0.3s both;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 .container-img {
@@ -159,6 +160,10 @@ body::after {
   object-fit: contain;
   filter: drop-shadow(0 10px 40px rgba(212, 168, 67, 0.25));
   transition: var(--transition-smooth);
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  pointer-events: none; /* Let touches pass through to container-wrapper */
 }
 
 .container-wrapper:hover .container-img {

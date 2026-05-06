@@ -237,12 +237,41 @@
     }
 
     // ===== Tap/Click Fallback =====
-    containerWrapper.addEventListener('click', handleTap);
+    // Use touchstart for mobile (instant, no 300ms delay) + click for desktop
+    containerWrapper.addEventListener('touchstart', handleTapTouch, { passive: false });
+    containerWrapper.addEventListener('click', handleTapClick);
     const btnTap = $('btnTap');
-    if (btnTap) btnTap.addEventListener('click', handleTap);
+    if (btnTap) {
+      btnTap.addEventListener('touchstart', handleTapTouch, { passive: false });
+      btnTap.addEventListener('click', handleTapClick);
+    }
 
+    // Prevent image drag / context menu on mobile (causes image to "disappear")
+    containerWrapper.addEventListener('contextmenu', e => e.preventDefault());
+    const containerImg = $('containerImg');
+    containerImg.addEventListener('dragstart', e => e.preventDefault());
+    containerImg.style.webkitUserSelect = 'none';
+    containerImg.style.userSelect = 'none';
+    containerImg.style.webkitTouchCallout = 'none';
+
+    let tappedByTouch = false; // Prevent double-fire (touch + click)
     const TAP_AMOUNT = 15; // Need ~7 taps to fill (with gentle decay)
-    function handleTap() {
+
+    function handleTapTouch(e) {
+      e.preventDefault(); // Prevent default touch behavior (image drag, ghost image, etc.)
+      tappedByTouch = true;
+      doTap();
+      // Reset flag after click event window
+      setTimeout(() => { tappedByTouch = false; }, 400);
+    }
+
+    function handleTapClick(e) {
+      // Skip if this click was triggered by a touch (already handled)
+      if (tappedByTouch) return;
+      doTap();
+    }
+
+    function doTap() {
       if (isRevealed) return;
       addShake(TAP_AMOUNT);
       // Brief shake animation per tap
